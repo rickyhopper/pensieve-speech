@@ -26,7 +26,7 @@ def startServer():
     addr = "{}://{}:{}".format(proto, host, port)
 
     context = zmq.Context()
-    socket = context.socket(zmq.REP)
+    socket = context.socket(zmq.REP) # MAY NEED TO BE CHANGED...
     socket.bind(addr)
 
     while True:

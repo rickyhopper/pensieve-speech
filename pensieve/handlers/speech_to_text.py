@@ -32,17 +32,25 @@ class SpeechToText(BaseHandler):
         m4aFile = open(directoryPath + fName + ".m4a", "wb")
         m4aFile.write(data)
         m4aFile.close()
+        """
+        NOTE: I may have to synchronize this block of the program if we end up doing async processing...
+        Otherwise, it will be bad times
+        """
         #run ffmpeg to convert to flac
         os.system("ffmpeg -i " + directoryPath + fName + ".m4a -acodec flac -ab 16k " + directoryPath + fName + ".flac")
-        #get bytes from flac file
-        flacFile = open(directoryPath + fName + ".flac", "rb")
+        if self.audio == None:
+            os.system("cp " + directoryPath + fName + ".flac " + directoryPath + "workingAudio.flac")
+        else:
+            os.system("sox " + directoryPath + "workingAudio.flac " + directoryPath + fName + ".flac " + directoryPath + "workingAudio.flac")
+        #get bytes from working stream
+        flacFile = open("workingAudio.flac", "rb")
         flacData = flacFile.read()
         flacFile.close()
-        #append flac file to working audio stream
-        if self.audio == None:
-            self.audio = flacData
-        else:
-            self.audio = self.audio + flacData
+        """
+        Synchronized block should end here, if/when it's needed
+        """
+        #set working audio stream
+        self.audio = flacData
 
         print "Sending audio"
 
@@ -61,11 +69,19 @@ class SpeechToText(BaseHandler):
         print response
 
         try:
-            #ensure response is json-formatted (for some reason, this is needed)
-            ret = json.dumps(json.loads(str(response)))
+            jsonData = json.loads(str(response))
+            if (len(jsonData["result"]) > 0):
+                #words found
+                #reduce working audio stream to only the most recent file
+                os.system("rm " + directoryPath + "workingAudio.flac")
+                os.system("mv " + directoryPath + fName + ".flac " + directoryPath + "workingAudio.flac")
+            else:
+                os.system("rm " + directoryPath + fName + ".flac")
+            ret = json.dumps(jsonData)
         except Exception as e:
             print e
             return invalidValue("life")
 
-        return ret
+        os.system("rm " + directoryPath + fName + ".m4a")
 
+        return ret
